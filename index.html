@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="description" content="Tapasya — A strict discipline system. No flexibility. No excuses." />
+  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Tapasya — Discipline System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ═══ CREATION PHASE ═══ -->
+  <div id="creation-phase" class="phase">
+    <header class="creation-header">
+      <div class="brand">
+        <div class="brand-glyph">त</div>
+        <div>
+          <h1 id="app-title">Tapasya</h1>
+          <p class="brand-tagline">No flexibility. No excuses. Execute.</p>
+        </div>
+      </div>
+    </header>
+
+    <div class="creation-body">
+      <div class="task-counter">
+        <div class="counter-row">
+          <span id="task-count-label" class="counter-label">0 / 3 tasks committed</span>
+        </div>
+        <div class="counter-bar">
+          <div id="counter-fill" class="counter-fill"></div>
+        </div>
+      </div>
+
+      <!-- Task Form -->
+      <div id="task-form" class="card task-form">
+        <div class="form-group">
+          <label for="task-title">Task Title <span class="req">*</span></label>
+          <input type="text" id="task-title" placeholder="What must be done?" maxlength="80" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="task-motivation">Why does this matter? <span class="req">*</span></label>
+          <textarea id="task-motivation" placeholder="Your reason for commitment..." rows="2" maxlength="300"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Subtasks <span class="req">*</span> <span class="hint">(min 1)</span></label>
+          <div id="subtask-list" class="subtask-list"></div>
+          <button type="button" id="add-subtask-btn" class="btn-add-sub">
+            <span class="plus-icon">+</span> Add Subtask
+          </button>
+        </div>
+        <button type="button" id="save-task-btn" class="btn btn-primary btn-full">Commit Task</button>
+      </div>
+
+      <!-- Committed Tasks -->
+      <div id="committed-tasks" class="committed-tasks"></div>
+
+      <!-- Begin Cycle -->
+      <div id="creation-actions" class="creation-actions" style="display:none;">
+        <button type="button" id="begin-cycle-btn" class="btn btn-danger btn-full">
+          ▶ Begin Cycle — No Turning Back
+        </button>
+      </div>
+
+      <div class="io-row">
+        <button type="button" id="import-btn" class="btn-ghost-sm">↑ Import</button>
+        <button type="button" id="export-btn" class="btn-ghost-sm">↓ Export</button>
+        <input type="file" id="import-file" accept=".json" style="display:none" />
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ EXECUTION PHASE ═══ -->
+  <div id="execution-phase" class="phase" style="display:none;">
+
+    <!-- Sticky Timer Header -->
+    <header id="timer-header" class="timer-header">
+      <div class="timer-row">
+        <div class="timer-block">
+          <div class="timer-label">TASK</div>
+          <div id="task-timer" class="timer-digits">02:00:00</div>
+        </div>
+        <div class="hourglass-wrap">
+          <svg id="hourglass-svg" class="hourglass" viewBox="0 0 40 70" fill="none">
+            <rect x="4" y="1" width="32" height="3" rx="1.5" fill="currentColor" opacity="0.5"/>
+            <rect x="4" y="66" width="32" height="3" rx="1.5" fill="currentColor" opacity="0.5"/>
+            <path d="M8 4 C8 4 8 28 20 35 C32 28 32 4 32 4" stroke="currentColor" stroke-width="1.2" opacity="0.3"/>
+            <path d="M8 66 C8 66 8 42 20 35 C32 42 32 66 32 66" stroke="currentColor" stroke-width="1.2" opacity="0.3"/>
+            <clipPath id="st-clip"><path d="M8 4 C8 4 8 28 20 35 C32 28 32 4 32 4Z"/></clipPath>
+            <clipPath id="sb-clip"><path d="M8 66 C8 66 8 42 20 35 C32 42 32 66 32 66Z"/></clipPath>
+            <rect id="sand-top" x="8" y="4" width="24" height="31" clip-path="url(#st-clip)" class="sand"/>
+            <line id="sand-stream" x1="20" y1="34" x2="20" y2="36" stroke="currentColor" stroke-width="1.5" class="sand-stream"/>
+            <rect id="sand-bottom" x="8" y="35" width="24" height="31" clip-path="url(#sb-clip)" class="sand"/>
+          </svg>
+        </div>
+        <div class="timer-block">
+          <div class="timer-label">CYCLE</div>
+          <div id="cycle-timer" class="timer-digits">06:00:00</div>
+        </div>
+      </div>
+      <div class="progress-track">
+        <div id="cycle-progress" class="progress-bar"></div>
+      </div>
+    </header>
+
+    <!-- Task Cards Slider -->
+    <div class="slider-area">
+      <div class="slider-viewport">
+        <button id="card-prev" class="slider-arrow slider-arrow-l" aria-label="Previous">‹</button>
+        <div id="cards-track" class="slider-track"></div>
+        <button id="card-next" class="slider-arrow slider-arrow-r" aria-label="Next">›</button>
+      </div>
+      <div id="card-dots" class="dots"></div>
+    </div>
+
+    <!-- Task Detail -->
+    <div id="task-detail" class="task-detail-area">
+      <div class="card detail-card">
+        <h3 class="detail-label">Motivation</h3>
+        <p id="detail-motivation" class="detail-text"></p>
+      </div>
+      <div class="card detail-card">
+        <h3 class="detail-label">Subtasks</h3>
+        <ul id="detail-subtasks" class="subtask-checks"></ul>
+      </div>
+      <div id="detail-log" class="card detail-card" style="display:none;">
+        <h3 class="detail-label">Switch Log</h3>
+        <div id="detail-log-entries"></div>
+      </div>
+    </div>
+
+    <!-- IO in execution -->
+    <div class="io-row io-exec">
+      <button type="button" id="export-btn-exec" class="btn-ghost-sm">↓ Export State</button>
+    </div>
+
+    <!-- Bottom Action Bar -->
+    <div id="action-bar" class="action-bar">
+      <button id="action-start" class="btn btn-primary btn-full">Start Task</button>
+      <button id="action-complete" class="btn btn-green btn-full" style="display:none;">Complete Task</button>
+      <button id="action-switch" class="btn btn-amber btn-action-half" style="display:none;">Switch Task</button>
+    </div>
+  </div>
+
+  <!-- ═══ MODALS ═══ -->
+
+  <!-- Abandon -->
+  <div id="modal-abandon" class="modal-backdrop" style="display:none;">
+    <div class="modal">
+      <div class="modal-icon">⚡</div>
+      <h2 class="modal-title">Why are you abandoning this task?</h2>
+      <p class="modal-sub">Your reason is permanently recorded.</p>
+      <textarea id="abandon-reason" class="modal-input" placeholder="Be honest..." rows="3"></textarea>
+      <div class="modal-btns">
+        <button id="abandon-cancel" class="btn btn-outline">Stay</button>
+        <button id="abandon-confirm" class="btn btn-danger">Abandon & Switch</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Complete -->
+  <div id="modal-complete" class="modal-backdrop" style="display:none;">
+    <div class="modal">
+      <div id="complete-step-exit">
+        <div class="modal-icon">✦</div>
+        <h2 class="modal-title">Have you <em>truly</em> completed this task?</h2>
+        <div class="modal-btns">
+          <button id="exit-no" class="btn btn-outline">No, go back</button>
+          <button id="exit-yes" class="btn btn-primary">Yes, I have</button>
+        </div>
+      </div>
+      <div id="complete-step-form" style="display:none;">
+        <h2 class="modal-title" style="margin-bottom:16px;">Task Completion</h2>
+        <div class="form-group">
+          <label for="complete-summary">What did you accomplish?</label>
+          <textarea id="complete-summary" class="modal-input" placeholder="Describe..." rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Satisfaction (1–10)</label>
+          <div class="range-row">
+            <input type="range" id="complete-satisfaction" min="1" max="10" value="5" />
+            <span id="satisfaction-value" class="range-val">5</span>
+          </div>
+        </div>
+        <button id="complete-submit" class="btn btn-green btn-full">Submit & Close Task</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Discipline Check -->
+  <div id="modal-discipline" class="modal-backdrop" style="display:none;">
+    <div class="modal modal-discipline">
+      <div class="modal-icon warn-bounce">⚠️</div>
+      <h2 class="modal-title" id="discipline-title">Are you still working?</h2>
+      <p class="modal-sub" id="discipline-subtitle">20-minute check-in. Confirm your focus.</p>
+      <button id="discipline-confirm" class="btn btn-primary btn-full">I'm Focused</button>
+    </div>
+  </div>
+
+  <!-- Taunt -->
+  <div id="overlay-taunt" class="fullscreen-overlay" style="display:none;">
+    <div class="overlay-content">
+      <div class="overlay-icon fire-pulse">🔥</div>
+      <h2 id="taunt-heading" class="overlay-heading"></h2>
+      <p id="taunt-message" class="overlay-text"></p>
+      <button id="taunt-dismiss" class="btn btn-outline btn-full" style="margin-bottom:12px;">Accept</button>
+      <button id="taunt-new-cycle" class="btn btn-green btn-full" style="display:none;">Start New Cycle</button>
+    </div>
+  </div>
+
+  <!-- Success -->
+  <div id="overlay-success" class="fullscreen-overlay success-overlay" style="display:none;">
+    <div class="overlay-content">
+      <div class="overlay-icon success-glow">✦</div>
+      <h2 class="overlay-heading" style="color:var(--green);">Discipline Achieved.</h2>
+      <p class="overlay-text">All tasks completed. You have earned the right to continue.</p>
+      <button id="success-new-cycle" class="btn btn-green btn-full">Begin New Cycle</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
