@@ -1,6 +1,6 @@
 /* ============================================
-   TAPASYA — DISCIPLINE SYSTEM
-   Vanilla JS · localStorage · Timestamp Timers
+   TAPASYA — STRICT DISCIPLINE SYSTEM
+   No switching. No flexibility. Sequential only.
    ============================================ */
 (function () {
   'use strict';
@@ -9,7 +9,7 @@
   const STORE_KEY   = 'tapasyaState';
   const TASK_MS     = 2 * 60 * 60 * 1000;   // 2 hours per task
   const CYCLE_MS    = 6 * 60 * 60 * 1000;   // 6 hours total
-  const CHECK_MS    = 20 * 60 * 1000;       // 20-min discipline
+  const CHECK_MS    = 20 * 60 * 1000;       // 20-min discipline check
   const BEEP_MS     = 5000;
   const MAX_TASKS   = 3;
 
@@ -34,15 +34,12 @@
   function blank() {
     return {
       tasks: [],
-      currentIdx: -1,
-      cycleStart: null,
-      taskStarts: {},      // idx → timestamp
-      taskAccum: {},       // idx → accumulated elapsed ms before pauses
-      activeIdx: -1,       // which task is currently running
-      logs: [],
-      locked: false,
-      ended: false,
-      checkAt: null,
+      currentIdx: 0,       // which task is current (strict sequential)
+      cycleStart: null,     // timestamp when cycle began
+      taskStart: null,      // timestamp when current task started
+      locked: false,        // true once cycle begins
+      ended: false,         // true when cycle timer expires
+      checkAt: null,        // last discipline check timestamp
       checkIgnored: false,
     };
   }
@@ -58,75 +55,69 @@
     return false;
   }
 
-  /* ── DOM helpers ──────────────────────────── */
+  /* ── DOM ──────────────────────────────────── */
   const $ = id => document.getElementById(id);
 
   const D = {
-    cPhase:         $('creation-phase'),
-    ePhase:         $('execution-phase'),
-    countLabel:     $('task-count-label'),
-    counterFill:    $('counter-fill'),
-    taskForm:       $('task-form'),
-    titleIn:        $('task-title'),
-    motivIn:        $('task-motivation'),
-    subList:        $('subtask-list'),
-    addSubBtn:      $('add-subtask-btn'),
-    saveBtn:        $('save-task-btn'),
-    committed:      $('committed-tasks'),
-    cActions:       $('creation-actions'),
-    beginBtn:       $('begin-cycle-btn'),
-    taskTimer:      $('task-timer'),
-    cycleTimer:     $('cycle-timer'),
-    cycleProg:      $('cycle-progress'),
-    track:          $('cards-track'),
-    prevBtn:        $('card-prev'),
-    nextBtn:        $('card-next'),
-    dots:           $('card-dots'),
-    detailMotiv:    $('detail-motivation'),
-    detailSubs:     $('detail-subtasks'),
-    detailLog:      $('detail-log'),
-    detailLogE:     $('detail-log-entries'),
-    actionBar:      $('action-bar'),
-    btnStart:       $('action-start'),
-    btnComplete:    $('action-complete'),
-    btnSwitch:      $('action-switch'),
-    hgSvg:          $('hourglass-svg'),
-    sandTop:        $('sand-top'),
-    sandBot:        $('sand-bottom'),
-    sandStr:        $('sand-stream'),
-    mAbandon:       $('modal-abandon'),
-    abandonTxt:     $('abandon-reason'),
-    abandonNo:      $('abandon-cancel'),
-    abandonYes:     $('abandon-confirm'),
-    mComplete:      $('modal-complete'),
-    compExit:       $('complete-step-exit'),
-    compForm:       $('complete-step-form'),
-    exitNo:         $('exit-no'),
-    exitYes:        $('exit-yes'),
-    compSummary:    $('complete-summary'),
-    compRange:      $('complete-satisfaction'),
-    compRangeV:     $('satisfaction-value'),
-    compSubmit:     $('complete-submit'),
-    mDiscipline:    $('modal-discipline'),
-    discTitle:      $('discipline-title'),
-    discSub:        $('discipline-subtitle'),
-    discOk:         $('discipline-confirm'),
-    oTaunt:         $('overlay-taunt'),
-    tauntH:         $('taunt-heading'),
-    tauntM:         $('taunt-message'),
-    tauntDismiss:   $('taunt-dismiss'),
-    tauntNew:       $('taunt-new-cycle'),
-    oSuccess:       $('overlay-success'),
-    successNew:     $('success-new-cycle'),
-    importBtn:      $('import-btn'),
-    exportBtn:      $('export-btn'),
-    importFile:     $('import-file'),
-    exportExec:     $('export-btn-exec'),
+    cPhase:      $('creation-phase'),
+    ePhase:      $('execution-phase'),
+    countLabel:  $('task-count-label'),
+    counterFill: $('counter-fill'),
+    taskForm:    $('task-form'),
+    titleIn:     $('task-title'),
+    motivIn:     $('task-motivation'),
+    subList:     $('subtask-list'),
+    addSubBtn:   $('add-subtask-btn'),
+    saveBtn:     $('save-task-btn'),
+    committed:   $('committed-tasks'),
+    cActions:    $('creation-actions'),
+    beginBtn:    $('begin-cycle-btn'),
+    taskTimer:   $('task-timer'),
+    cycleTimer:  $('cycle-timer'),
+    cycleProg:   $('cycle-progress'),
+    track:       $('cards-track'),
+    prevBtn:     $('card-prev'),
+    nextBtn:     $('card-next'),
+    dots:        $('card-dots'),
+    detailMotiv: $('detail-motivation'),
+    detailSubs:  $('detail-subtasks'),
+    detailLog:   $('detail-log'),
+    detailLogE:  $('detail-log-entries'),
+    btnStart:    $('action-start'),
+    btnComplete: $('action-complete'),
+    hgSvg:       $('hourglass-svg'),
+    sandTop:     $('sand-top'),
+    sandBot:     $('sand-bottom'),
+    sandStr:     $('sand-stream'),
+    mComplete:   $('modal-complete'),
+    compExit:    $('complete-step-exit'),
+    compForm:    $('complete-step-form'),
+    exitNo:      $('exit-no'),
+    exitYes:     $('exit-yes'),
+    compSummary: $('complete-summary'),
+    compRange:   $('complete-satisfaction'),
+    compRangeV:  $('satisfaction-value'),
+    compSubmit:  $('complete-submit'),
+    mDiscipline: $('modal-discipline'),
+    discTitle:   $('discipline-title'),
+    discSub:     $('discipline-subtitle'),
+    discOk:      $('discipline-confirm'),
+    oTaunt:      $('overlay-taunt'),
+    tauntH:      $('taunt-heading'),
+    tauntM:      $('taunt-message'),
+    tauntDismiss:$('taunt-dismiss'),
+    tauntNew:    $('taunt-new-cycle'),
+    oSuccess:    $('overlay-success'),
+    successNew:  $('success-new-cycle'),
+    importBtn:   $('import-btn'),
+    exportBtn:   $('export-btn'),
+    importFile:  $('import-file'),
+    exportExec:  $('export-btn-exec'),
   };
 
-  let view = 0;             // current slide index
-  let tickId = null;         // timer interval
-  let checkTimer = null;     // discipline timeout
+  let view = 0;
+  let tickId = null;
+  let checkTimer = null;
 
   /* ════════════════════════════════════════════
      BOOT
@@ -154,10 +145,7 @@
     D.nextBtn.addEventListener('click', () => nav(1));
     D.btnStart.addEventListener('click', startTask);
     D.btnComplete.addEventListener('click', openComplete);
-    D.btnSwitch.addEventListener('click', openAbandon);
 
-    D.abandonNo.addEventListener('click', () => hide(D.mAbandon));
-    D.abandonYes.addEventListener('click', confirmAbandon);
     D.exitNo.addEventListener('click', () => hide(D.mComplete));
     D.exitYes.addEventListener('click', () => {
       D.compExit.style.display = 'none';
@@ -175,7 +163,7 @@
     D.exportBtn.addEventListener('click', doExport);
     D.exportExec.addEventListener('click', doExport);
 
-    // Touch swipe
+    // Touch swipe for cards
     let sx = 0;
     D.track.addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, { passive: true });
     D.track.addEventListener('touchend', e => {
@@ -210,8 +198,11 @@
     if (S.tasks.length >= MAX_TASKS) return;
 
     S.tasks.push({
-      title, motivation: motiv, subtasks: subs,
-      status: 'pending', switchLogs: [], completion: null,
+      title,
+      motivation: motiv,
+      subtasks: subs,
+      status: 'pending',    // pending | active | completed
+      completion: null,
     });
     save();
     D.titleIn.value = '';
@@ -269,8 +260,7 @@
     if (!S.tasks.length) return;
     S.locked = true;
     S.currentIdx = 0;
-    S.activeIdx = -1;
-    S.cycleStart = null;
+    S.cycleStart = null;  // starts when first task starts
     S.ended = false;
     save();
     enterExecution();
@@ -282,12 +272,13 @@
   function enterExecution() {
     D.cPhase.style.display = 'none';
     D.ePhase.style.display = 'block';
-    view = S.activeIdx >= 0 ? S.activeIdx : (S.currentIdx >= 0 ? S.currentIdx : 0);
+    view = S.currentIdx;
     renderSlides();
     renderDetail();
     syncActions();
     startTick();
     scheduleCheck();
+
     if (S.ended) { showEnd(); }
     else if (S.cycleStart && Date.now() - S.cycleStart >= CYCLE_MS) endCycle();
   }
@@ -299,12 +290,22 @@
     S.tasks.forEach((t, i) => {
       const sl = document.createElement('div');
       sl.className = 'slide';
-      const cls = t.status === 'active' ? 'is-active' : t.status === 'completed' ? 'is-done' : t.status === 'abandoned' ? 'is-switched' : '';
-      const lbl = t.status === 'active' ? 'ACTIVE' : t.status === 'completed' ? 'COMPLETED' : t.status === 'abandoned' ? 'SWITCHED' : 'PENDING';
-      const scls = t.status === 'active' ? 's-active' : t.status === 'completed' ? 's-done' : t.status === 'abandoned' ? 's-switched' : '';
+      const cls = t.status === 'active' ? 'is-active' :
+                  t.status === 'completed' ? 'is-done' : '';
+      const lbl = t.status === 'active' ? 'ACTIVE' :
+                  t.status === 'completed' ? 'COMPLETED' : 'PENDING';
+      const scls = t.status === 'active' ? 's-active' :
+                   t.status === 'completed' ? 's-done' : '';
+
+      // Show order lock indicator
+      const orderBadge = `<span style="opacity:0.4;font-size:0.6rem;">TASK ${i + 1} OF ${S.tasks.length}</span>`;
+
       const done = t.subtasks.filter(s => s.done).length;
       sl.innerHTML = `<div class="slide-card ${cls}">
-        <div class="slide-status ${scls}">${lbl}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div class="slide-status ${scls}">${lbl}</div>
+          ${orderBadge}
+        </div>
         <div class="slide-title">${esc(t.title)}</div>
         <div class="slide-meta">${done}/${t.subtasks.length} subtasks</div>
       </div>`;
@@ -339,7 +340,7 @@
     D.detailMotiv.textContent = t.motivation;
 
     D.detailSubs.innerHTML = '';
-    const isActive = t.status === 'active' && view === S.activeIdx;
+    const isActive = t.status === 'active' && view === S.currentIdx;
     t.subtasks.forEach((s, si) => {
       const li = document.createElement('li');
       li.className = 'sub-check-row';
@@ -353,16 +354,8 @@
       D.detailSubs.appendChild(li);
     });
 
-    if (t.switchLogs.length) {
-      D.detailLog.style.display = 'block';
-      D.detailLogE.innerHTML = '';
-      t.switchLogs.forEach(l => {
-        const e = document.createElement('div');
-        e.className = 'log-entry';
-        e.innerHTML = `<div class="log-time">${new Date(l.ts).toLocaleTimeString()}</div><div class="log-reason">${esc(l.reason)}</div>`;
-        D.detailLogE.appendChild(e);
-      });
-    } else { D.detailLog.style.display = 'none'; }
+    // Hide log section (no switching in strict mode)
+    D.detailLog.style.display = 'none';
 
     // Completion info
     const area = document.querySelector('.task-detail-area');
@@ -375,55 +368,36 @@
     } else if (cc) { cc.remove(); }
   }
 
-  /* ── Action Buttons ─────────────────────── */
+  /* ── Action Buttons (STRICT: only current task, no switch) ── */
   function syncActions() {
     const t = S.tasks[view];
     D.btnStart.style.display = 'none';
     D.btnComplete.style.display = 'none';
-    D.btnSwitch.style.display = 'none';
     if (!t || S.ended) return;
 
-    if (t.status === 'active' && view === S.activeIdx) {
-      // Active task: show Complete + Switch (if >1 task)
-      D.btnComplete.style.display = 'block';
-      if (S.tasks.length > 1) {
-        D.btnSwitch.style.display = 'block';
-        // Adjust layout: complete takes remaining space
-        D.btnComplete.classList.remove('btn-full');
-        D.btnComplete.style.flex = '1';
-      } else {
-        D.btnComplete.classList.add('btn-full');
-        D.btnComplete.style.flex = '';
-      }
-    } else if (t.status === 'pending') {
-      const can = canStart(view);
-      D.btnStart.style.display = 'block';
-      D.btnStart.disabled = !can;
-      D.btnStart.textContent = can ? 'Start Task' : 'Complete previous tasks first';
-    }
-  }
+    // Only the current sequential task can be interacted with
+    if (view !== S.currentIdx) return;
 
-  function canStart(idx) {
-    // All tasks before must be completed
-    for (let i = 0; i < idx; i++) {
-      if (S.tasks[i].status !== 'completed') return false;
+    if (t.status === 'active') {
+      D.btnComplete.style.display = 'block';
+      D.btnComplete.classList.add('btn-full');
+    } else if (t.status === 'pending') {
+      D.btnStart.style.display = 'block';
+      D.btnStart.disabled = false;
+      D.btnStart.textContent = 'Start Task';
     }
-    // No other task should be active
-    if (S.activeIdx >= 0 && S.activeIdx !== idx) return false;
-    return true;
+    // completed tasks show nothing — you've moved on
   }
 
   /* ── Start Task ─────────────────────────── */
   function startTask() {
-    const t = S.tasks[view];
-    if (!t || t.status !== 'pending' || !canStart(view)) return;
+    const t = S.tasks[S.currentIdx];
+    if (!t || t.status !== 'pending') return;
 
     t.status = 'active';
-    S.currentIdx = view;
-    S.activeIdx = view;
-    S.taskStarts[view] = Date.now();
-    S.taskAccum[view] = 0;
+    S.taskStart = Date.now();
 
+    // Start cycle timer on first task
     if (!S.cycleStart) S.cycleStart = Date.now();
 
     S.checkAt = Date.now();
@@ -431,53 +405,6 @@
     save();
     renderSlides(); renderDetail(); syncActions();
     scheduleCheck();
-  }
-
-  /* ── Abandon / Switch ───────────────────── */
-  function openAbandon() {
-    D.abandonTxt.value = '';
-    D.mAbandon.style.display = 'flex';
-    D.abandonTxt.focus();
-  }
-
-  function confirmAbandon() {
-    const reason = D.abandonTxt.value.trim();
-    if (!reason) return shake(D.abandonTxt);
-
-    const cur = S.tasks[S.activeIdx];
-    cur.switchLogs.push({ reason, ts: Date.now() });
-
-    // Save accumulated time for current task
-    const started = S.taskStarts[S.activeIdx] || Date.now();
-    const accum = (S.taskAccum[S.activeIdx] || 0) + (Date.now() - started);
-    S.taskAccum[S.activeIdx] = accum;
-
-    cur.status = 'abandoned';
-
-    // Find next pending task
-    let next = -1;
-    for (let i = 0; i < S.tasks.length; i++) {
-      if (S.tasks[i].status === 'pending') { next = i; break; }
-    }
-
-    if (next >= 0) {
-      S.tasks[next].status = 'active';
-      S.activeIdx = next;
-      S.currentIdx = next;
-      S.taskStarts[next] = Date.now();
-      S.taskAccum[next] = 0;
-      view = next;
-    } else {
-      S.activeIdx = -1;
-      // Check if all done
-      if (S.tasks.every(t => t.status === 'completed')) {
-        S.ended = true;
-      }
-    }
-
-    save();
-    hide(D.mAbandon);
-    renderSlides(); renderDetail(); syncActions();
   }
 
   /* ── Complete Task ──────────────────────── */
@@ -494,42 +421,28 @@
     const summary = D.compSummary.value.trim();
     if (!summary) return shake(D.compSummary);
     const sat = +D.compRange.value;
-    const t = S.tasks[S.activeIdx];
+    const t = S.tasks[S.currentIdx];
 
     t.status = 'completed';
     t.completion = { summary, satisfaction: sat, ts: Date.now() };
 
-    // Move to next
-    let next = -1;
-    for (let i = S.activeIdx + 1; i < S.tasks.length; i++) {
-      if (S.tasks[i].status === 'pending' || S.tasks[i].status === 'abandoned') {
-        next = i; break;
-      }
-    }
+    // STRICT: move to next task in order
+    const nextIdx = S.currentIdx + 1;
 
-    if (next >= 0) {
-      S.currentIdx = next;
-      S.activeIdx = -1; // will start when user clicks Start
-      view = next;
-      // If it was abandoned, reset to pending so they can start
-      if (S.tasks[next].status === 'abandoned') {
-        S.tasks[next].status = 'pending';
-      }
+    if (nextIdx < S.tasks.length) {
+      // Auto-advance to next task
+      S.currentIdx = nextIdx;
+      S.taskStart = null;  // will be set when user clicks Start
+      view = nextIdx;
     } else {
-      S.activeIdx = -1;
-      const all = S.tasks.every(t => t.status === 'completed');
-      if (all) S.ended = true;
-      else {
-        // Find any non-completed
-        const fi = S.tasks.findIndex(t => t.status !== 'completed');
-        if (fi >= 0) { S.currentIdx = fi; view = fi; }
-        else S.ended = true;
-      }
+      // All tasks done
+      S.ended = true;
     }
 
     save();
     hide(D.mComplete);
     renderSlides(); renderDetail(); syncActions();
+
     if (S.tasks.every(t => t.status === 'completed')) showSuccess();
   }
 
@@ -545,7 +458,7 @@
   function tick() {
     const now = Date.now();
 
-    // Cycle
+    // ── Cycle Timer ──
     if (S.cycleStart) {
       const ce = now - S.cycleStart;
       const cr = Math.max(0, CYCLE_MS - ce);
@@ -557,29 +470,26 @@
       D.cycleProg.style.width = '0%';
     }
 
-    // Task
-    if (S.activeIdx >= 0 && S.tasks[S.activeIdx]?.status === 'active') {
-      const started = S.taskStarts[S.activeIdx];
-      const accum = S.taskAccum[S.activeIdx] || 0;
-      if (started) {
-        const elapsed = accum + (now - started);
-        const rem = Math.max(0, TASK_MS - elapsed);
-        D.taskTimer.textContent = fmt(rem);
+    // ── Task Timer ──
+    const cur = S.tasks[S.currentIdx];
+    if (S.taskStart && cur && cur.status === 'active') {
+      const elapsed = now - S.taskStart;
+      const rem = Math.max(0, TASK_MS - elapsed);
+      D.taskTimer.textContent = fmt(rem);
 
-        // Color states
-        D.taskTimer.classList.remove('warn', 'critical');
-        D.hgSvg.classList.remove('warn', 'critical');
-        if (rem < 10 * 60 * 1000) {
-          D.taskTimer.classList.add('critical');
-          D.hgSvg.classList.add('critical');
-        } else if (rem < 30 * 60 * 1000) {
-          D.taskTimer.classList.add('warn');
-          D.hgSvg.classList.add('warn');
-        }
-
-        updateHourglass(rem / TASK_MS);
-        D.sandStr.classList.toggle('active', rem > 0);
+      // Color warnings
+      D.taskTimer.classList.remove('warn', 'critical');
+      D.hgSvg.classList.remove('warn', 'critical');
+      if (rem < 10 * 60 * 1000) {
+        D.taskTimer.classList.add('critical');
+        D.hgSvg.classList.add('critical');
+      } else if (rem < 30 * 60 * 1000) {
+        D.taskTimer.classList.add('warn');
+        D.hgSvg.classList.add('warn');
       }
+
+      updateHourglass(rem / TASK_MS);
+      D.sandStr.classList.toggle('active', rem > 0);
     } else {
       D.taskTimer.textContent = fmt(TASK_MS);
       D.taskTimer.classList.remove('warn', 'critical');
@@ -609,11 +519,12 @@
   function p(n) { return n < 10 ? '0' + n : '' + n; }
 
   /* ════════════════════════════════════════════
-     DISCIPLINE CHECK
+     DISCIPLINE CHECK (every 20 minutes)
      ════════════════════════════════════════════ */
   function scheduleCheck() {
     if (checkTimer) clearTimeout(checkTimer);
-    if (S.activeIdx < 0) return;
+    const cur = S.tasks[S.currentIdx];
+    if (!cur || cur.status !== 'active') return;
     const last = S.checkAt || Date.now();
     const next = last + CHECK_MS;
     const delay = Math.max(0, next - Date.now());
@@ -621,7 +532,8 @@
   }
 
   function fireCheck() {
-    if (S.activeIdx < 0) return;
+    const cur = S.tasks[S.currentIdx];
+    if (!cur || cur.status !== 'active') return;
     beep(BEEP_MS);
     if (S.checkIgnored) {
       D.discTitle.textContent = 'You ignored the check.';
@@ -659,12 +571,11 @@
     const inc = S.tasks.filter(t => t.status !== 'completed').length;
     if (inc === 0) { showSuccess(); return; }
 
-    const msgs = [
-      null,
-      ['You were close.', 'But close is not discipline. One task remains unfinished. Close is the cruelest distance from done.'],
-      ['You are avoiding effort.', 'This is not lack of time, this is lack of control. Two tasks left behind. The pattern is becoming clear.'],
-      ['You planned nothing. You executed nothing.', 'This is wasted time. Three tasks committed, zero completed. The only person you deceived is yourself.'],
-    ];
+    const msgs = {
+      1: ['You were close.', 'But close is not discipline. One task remains unfinished. Close is the cruelest distance from done.'],
+      2: ['You are avoiding effort.', 'This is not lack of time, this is lack of control. Two tasks left behind. The pattern is becoming clear.'],
+      3: ['You planned nothing. You executed nothing.', 'This is wasted time. Three tasks committed, zero completed. The only person you deceived is yourself.'],
+    };
     const [h, m] = msgs[inc] || msgs[3];
     D.tauntH.textContent = h;
     D.tauntM.textContent = m;

@@ -158,8 +158,7 @@ label {
 .btn-add-sub:hover { color: var(--accent); border-color: var(--accent-dim); }
 .plus-icon { font-size: 1.1rem; line-height: 1; }
 
-/* Action bar half-width button */
-.btn-action-half { flex: 0 0 auto; min-width: 130px; }
+/* Strict mode: only full-width buttons in action bar */
 
 /* ── Inputs ────────────────────────────────── */
 input[type="text"], textarea, .modal-input {

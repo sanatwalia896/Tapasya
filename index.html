@@ -143,25 +143,12 @@
     <div id="action-bar" class="action-bar">
       <button id="action-start" class="btn btn-primary btn-full">Start Task</button>
       <button id="action-complete" class="btn btn-green btn-full" style="display:none;">Complete Task</button>
-      <button id="action-switch" class="btn btn-amber btn-action-half" style="display:none;">Switch Task</button>
     </div>
   </div>
 
   <!-- ═══ MODALS ═══ -->
 
-  <!-- Abandon -->
-  <div id="modal-abandon" class="modal-backdrop" style="display:none;">
-    <div class="modal">
-      <div class="modal-icon">⚡</div>
-      <h2 class="modal-title">Why are you abandoning this task?</h2>
-      <p class="modal-sub">Your reason is permanently recorded.</p>
-      <textarea id="abandon-reason" class="modal-input" placeholder="Be honest..." rows="3"></textarea>
-      <div class="modal-btns">
-        <button id="abandon-cancel" class="btn btn-outline">Stay</button>
-        <button id="abandon-confirm" class="btn btn-danger">Abandon & Switch</button>
-      </div>
-    </div>
-  </div>
+  <!-- No abandon modal — strict sequential discipline -->
 
   <!-- Complete -->
   <div id="modal-complete" class="modal-backdrop" style="display:none;">
