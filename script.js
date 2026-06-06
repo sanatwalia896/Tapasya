@@ -7,7 +7,8 @@
 
   /* ── Constants ────────────────────────────── */
   const STORE_KEY   = 'tapasyaState';
-  const TASK_MS     = 2 * 60 * 60 * 1000;   // 2 hours per task
+  const TASK_MS     = 1.5 * 60 * 60 * 1000; // 1.5 hours per task
+  const BREAK_MS    = 20 * 60 * 1000;       // 20-min break between tasks
   const CYCLE_MS    = 6 * 60 * 60 * 1000;   // 6 hours total
   const CHECK_MS    = 20 * 60 * 1000;       // 20-min discipline check
   const BEEP_MS     = 5000;
@@ -37,6 +38,7 @@
       currentIdx: 0,       // which task is current (strict sequential)
       cycleStart: null,     // timestamp when cycle began
       taskStart: null,      // timestamp when current task started
+      breakStart: null,     // timestamp when break started (null = no break)
       locked: false,        // true once cycle begins
       ended: false,         // true when cycle timer expires
       checkAt: null,        // last discipline check timestamp
@@ -290,12 +292,16 @@
     S.tasks.forEach((t, i) => {
       const sl = document.createElement('div');
       sl.className = 'slide';
+      const isOnBreak = S.breakStart && i === S.currentIdx && t.status === 'pending';
       const cls = t.status === 'active' ? 'is-active' :
-                  t.status === 'completed' ? 'is-done' : '';
+                  t.status === 'completed' ? 'is-done' :
+                  isOnBreak ? 'is-break' : '';
       const lbl = t.status === 'active' ? 'ACTIVE' :
-                  t.status === 'completed' ? 'COMPLETED' : 'PENDING';
+                  t.status === 'completed' ? 'COMPLETED' :
+                  isOnBreak ? 'BREAK' : 'PENDING';
       const scls = t.status === 'active' ? 's-active' :
-                   t.status === 'completed' ? 's-done' : '';
+                   t.status === 'completed' ? 's-done' :
+                   isOnBreak ? 's-break' : '';
 
       // Show order lock indicator
       const orderBadge = `<span style="opacity:0.4;font-size:0.6rem;">TASK ${i + 1} OF ${S.tasks.length}</span>`;
@@ -383,8 +389,14 @@
       D.btnComplete.classList.add('btn-full');
     } else if (t.status === 'pending') {
       D.btnStart.style.display = 'block';
-      D.btnStart.disabled = false;
-      D.btnStart.textContent = 'Start Task';
+      // Block start during break
+      if (S.breakStart) {
+        D.btnStart.disabled = true;
+        D.btnStart.textContent = 'Break in progress...';
+      } else {
+        D.btnStart.disabled = false;
+        D.btnStart.textContent = 'Start Task';
+      }
     }
     // completed tasks show nothing — you've moved on
   }
@@ -430,13 +442,15 @@
     const nextIdx = S.currentIdx + 1;
 
     if (nextIdx < S.tasks.length) {
-      // Auto-advance to next task
+      // Auto-advance to next task with break
       S.currentIdx = nextIdx;
-      S.taskStart = null;  // will be set when user clicks Start
+      S.taskStart = null;
+      S.breakStart = Date.now();  // Start 20-min break
       view = nextIdx;
     } else {
-      // All tasks done
+      // All tasks done — no break after last task
       S.ended = true;
+      S.breakStart = null;
     }
 
     save();
@@ -470,7 +484,33 @@
       D.cycleProg.style.width = '0%';
     }
 
+    // ── Break Timer ──
+    if (S.breakStart) {
+      const breakElapsed = now - S.breakStart;
+      const breakRem = Math.max(0, BREAK_MS - breakElapsed);
+      if (breakRem <= 0) {
+        // Break is over — allow starting next task
+        S.breakStart = null;
+        save();
+        beep(2000);
+        renderSlides(); syncActions();
+      } else {
+        // Show break countdown in task timer
+        D.taskTimer.textContent = fmt(breakRem);
+        D.taskTimer.classList.remove('warn', 'critical');
+        D.taskTimer.classList.add('break-timer');
+        D.hgSvg.classList.remove('warn', 'critical');
+        D.hgSvg.classList.add('break-color');
+        updateHourglass(breakRem / BREAK_MS);
+        D.sandStr.classList.add('active');
+        syncActions(); // keep button text updated
+        return; // skip task timer logic
+      }
+    }
+
     // ── Task Timer ──
+    D.taskTimer.classList.remove('break-timer');
+    D.hgSvg.classList.remove('break-color');
     const cur = S.tasks[S.currentIdx];
     if (S.taskStart && cur && cur.status === 'active') {
       const elapsed = now - S.taskStart;

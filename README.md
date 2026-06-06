@@ -28,7 +28,7 @@ Tapasya is a brutally strict task execution system designed to eliminate procras
 - Once started: **Task 1 → Task 2 → Task 3**, no exceptions
 
 ### ⏱️ Timestamp-Based Timers
-- **2 hours per task**, 6 hours max per cycle
+- **1.5 hours per task** (with a **20-minute break** between tasks), 6 hours max per cycle
 - Timers use `Date.now()` — survives page refresh, tab close, and reopen
 - Hourglass animation changes color: white → 🟠 orange (<30 min) → 🔴 red (<10 min)
 

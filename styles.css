@@ -454,6 +454,21 @@ input[type="text"]:focus, textarea:focus, .modal-input:focus {
 .slide-card.is-switched { opacity: 0.55; border-color: var(--amber); }
 .slide-card.is-switched::before { background: var(--amber); }
 
+.slide-card.is-break {
+  opacity: 0.85;
+  border-color: #2dd4bf;
+  box-shadow: 0 0 24px rgba(45,212,191,0.15);
+  animation: breakPulse 2s ease infinite;
+}
+.slide-card.is-break::before { background: #2dd4bf; }
+@keyframes breakPulse { 0%,100%{box-shadow:0 0 24px rgba(45,212,191,0.1);} 50%{box-shadow:0 0 32px rgba(45,212,191,0.25);} }
+
+.slide-status.s-break { color: #2dd4bf; }
+
+/* Break timer color */
+.timer-digits.break-timer { color: #2dd4bf; }
+.hourglass.break-color { color: #2dd4bf; }
+
 .slide-status {
   font-size: 0.625rem;
   font-weight: 700;
